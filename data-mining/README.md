@@ -1,4 +1,3 @@
-
 # 1
 ## Business Understanding
 - BU: analysis of requirements with the end user
