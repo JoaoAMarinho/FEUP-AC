@@ -6,7 +6,12 @@ Banks are financial institutions, licensed to accept checking, saving deposits, 
 
 Given that the bank stores accurate data about their clients and previous records (transactions, granted loans, etc.), our product aims to help bank managers decide which loan requests should be accepted or not.
 
-![Data Flow Diagram](./images/Data-Flow-Diagram.png)*Fig 1. Data Flow Diagram*
+<p align="center" justify="center">
+  <img src="./images/Data-Flow-Diagram.png"/>
+</p>
+<p align="center">
+  <b><i>Fig 1. Data Flow Diagram</i></b>
+</p>
 
 ## Definition of business goals
 
