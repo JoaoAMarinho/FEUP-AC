@@ -15,8 +15,9 @@ Given that the bank stores accurate data about their clients and previous record
 
 ## Definition of business goals
 
-
-- reduzir o crédito mal parado
+- Minimize the bank bad credit
+- Em tempo útil
+- Percentagem de 
 
 - What is our product for - provide the bank some knowledge and assurance about possible future loans
 - This is done by implementing a model such that it is able to previously recognize loans that will not succeed
