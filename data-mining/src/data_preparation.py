@@ -60,17 +60,17 @@ def calculate_average_unemployment_rate(df):
 
     # convert '?' to NaN
 
-    df['unemployment rate \'95 '] = pd.to_numeric(df['unemployment rate \'95 '], errors='coerce')
-    df['unemployment rate \'96 '] = pd.to_numeric(df['unemployment rate \'96 '], errors='coerce')
+    df['unemploymant rate \'95 '] = pd.to_numeric(df['unemploymant rate \'95 '], errors='coerce')
+    df['unemploymant rate \'96 '] = pd.to_numeric(df['unemploymant rate \'96 '], errors='coerce')
 
     # NaN values will be equaled to the value of the other column
 
-    df.loc[nan_unemployment_rate(95), 'unemployment rate \'95 '] = df['unemployment rate \'96 ']
-    df.loc[nan_unemployment_rate(96), 'unemployment rate \'96 '] = df['unemployment rate \'95 ']
+    df.loc[nan_unemployment_rate(95), 'unemploymant rate \'95 '] = df['unemploymant rate \'96 ']
+    df.loc[nan_unemployment_rate(96), 'unemploymant rate \'96 '] = df['unemploymant rate \'95 ']
 
     # create column with mean from both years and drop previous and now useless columns
 
-    df['unemployment_rate'] = df[['unemployment rate \'95 ', 'unemployment rate \'96 ']].mean(axis=1)
+    df['unemployment_rate'] = df[['unemploymant rate \'95 ', 'unemploymant rate \'96 ']].mean(axis=1)
 
     return df
 
@@ -110,12 +110,15 @@ def drop_duplicated_accounts(df):
 
 def drop_irrelevant_columns_from_main_df(df):
     to_drop = [
+        'account_id',
+        'loan_id',
+        'client_id',
         'disp_id',
         'card_id',
         'type_card',
         'issued',
-        'unemployment rate \'95 ', 
-        'unemployment rate \'96 ',
+        'unemploymant rate \'95 ', 
+        'unemploymant rate \'96 ',
         'no. of commited crimes \'95 ', 
         'no. of commited crimes \'96 '
     ]
@@ -143,3 +146,13 @@ def rename_transactions_df_columns(df):
     }
     df = df.rename(to_rename, axis=1)
     return df
+
+
+def drop_amount_outliers(df, col_name):
+    q1 = df[col_name].quantile(0.25)
+    q3 = df[col_name].quantile(0.75)
+    iqr = q3-q1 #Interquartile range
+    fence_low  = q1-1.5*iqr
+    fence_high = q3+1.5*iqr
+    df_out = df.loc[(df[col_name] > fence_low) & (df[col_name] < fence_high)]
+    return df_out
