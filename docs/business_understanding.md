@@ -6,6 +6,7 @@ Banks are financial institutions, licensed to accept checking, saving deposits, 
 
 Given that the bank stores accurate data about their clients and previous records (transactions, granted loans, etc.), our product aims to help bank managers decide which loan requests should be accepted or not. This will provide help in the loan granting decision process, via a data-based input that will lead to better results, i.e. the bank loans will mostly succeed, resulting in a revenue increase by means of loan interest rates.
 
+<!-- automatizar o processo -> convencer o manager e dizer-lhe o que é que ele ganha com o nosso programa -->
 <p align="center" justify="center">
   <img src="./images/Data-Flow-Diagram.png"/>
 </p>

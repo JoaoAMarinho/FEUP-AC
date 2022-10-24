@@ -110,8 +110,12 @@ def drop_duplicated_accounts(df):
 
 def drop_irrelevant_columns_from_main_df(df):
     to_drop = [
+        'account_id',
+        'loan_id',
+        'client_id',
         'disp_id',
         'card_id',
+        'name ',
         'type_card',
         'issued',
         'unemploymant rate \'95 ', 
@@ -143,6 +147,9 @@ def rename_main_df_columns(df):
     df = df.rename(to_rename, axis=1)
     return df
 
+def drop_irrelevant_columns(df, to_drop):
+    df = df.drop(to_drop, axis=1).reset_index(drop=True)
+    return df
 
 def rename_transactions_df_columns(df):
     to_rename = { 
@@ -161,3 +168,8 @@ def drop_outliers(df, col_name):
     fence_high = q3+1.5*iqr
     df_out = df.loc[(df[col_name] > fence_low) & (df[col_name] < fence_high)]
     return df_out
+
+def convert_n_numerical_to_numerical(df, col_name):
+    mapping = {k: v for v, k in enumerate(df[col_name].unique())}
+    df[col_name] = df[col_name].map(mapping)
+    return df
