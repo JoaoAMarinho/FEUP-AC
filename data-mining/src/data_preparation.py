@@ -116,6 +116,9 @@ def drop_irrelevant_columns_from_main_df(df):
         'disp_id',
         'card_id',
         'name ',
+        'code',
+        'region',
+        'gender',
         'type_card',
         'issued',
         'unemploymant rate \'95 ', 
@@ -128,12 +131,17 @@ def drop_irrelevant_columns_from_main_df(df):
 
 
 def drop_irrelevant_columns_from_transactions_df(df):
-    to_drop = []
+    to_drop = [
+        'k_symbol',
+        'account_id',
+        'trans_id_',
+        'date_transaction',
+        ]
     df = df.drop(to_drop, axis=1).reset_index(drop=True)
     return df
 
 def drop_demographic_columns_from_transactions_df(df):
-    df = df.drop(['region','no. of inhabitants', 'no. of municipalities with inhabitants < 499 ',
+    df = df.drop(['no. of inhabitants', 'no. of municipalities with inhabitants < 499 ',
        'no. of municipalities with inhabitants 500-1999',
        'no. of municipalities with inhabitants 2000-9999 ',
        'no. of municipalities with inhabitants >10000 ', 'no. of cities ',
