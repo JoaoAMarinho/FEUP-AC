@@ -1,12 +1,13 @@
 # Business Understanding
 
-## Analysis of requirements with the end user
-
 Banks are financial institutions, licensed to accept checking, saving deposits, and making loans. Regarding loans, it is the bank’s responsibility to accept or deny loan requests, based on the evaluation of the request. This is a decision of paramount importance that highly impacts the bank’s balance if wrongly taken. Successful loans will profit the bank, retrieving the applied fees. However, if unsuccessful, the bank might be at a loss of thousands of euros.
+
+## Analysis of requirements with the end user
 
 Given that the bank stores accurate data about their clients and previous records (transactions, granted loans, etc.), our product aims to help bank managers decide which loan requests should be accepted or not. This will provide help in the loan granting decision process, via a data-based input that will lead to better results, i.e. the bank loans will mostly succeed, resulting in a revenue increase by means of loan interest rates.
 
-<!-- automatizar o processo -> convencer o manager e dizer-lhe o que é que ele ganha com o nosso programa -->
+By automating the predicting process of loan success payment, our product will avoid money loss while improving decisions, and also decrease labor, thus reducing work expenses.
+
 <p align="center" justify="center">
   <img src="./images/Data-Flow-Diagram.png"/>
 </p>
