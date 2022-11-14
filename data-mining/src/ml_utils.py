@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.feature_selection import SequentialFeatureSelector
 
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
@@ -28,6 +29,7 @@ def apply(
     parameter_grid,
     cross_validation=StratifiedKFold(n_splits=5),
     feature_selection=False,
+    filter=False,
     oversample=False
 ):
     scaler = StandardScaler().fit(X=df)
@@ -44,7 +46,11 @@ def apply(
     pipeline = []
 
     if feature_selection:
-        rfe = SelectKBest(f_classif, k=10)
+        rfe = SequentialFeatureSelector(model_instance, n_features_to_select=3)
+
+        if filter:
+            rfe = SelectKBest(f_classif, k=10)
+
         pipeline.append(('feature_selection', rfe))
 
     if oversample:
