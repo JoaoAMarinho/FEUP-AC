@@ -11,7 +11,7 @@ from imblearn.over_sampling import SMOTE
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, auc, roc_curve, RocCurveDisplay, accuracy_score, f1_score, make_scorer, plot_confusion_matrix
+from sklearn.metrics import classification_report, auc, roc_curve, RocCurveDisplay, accuracy_score, f1_score, make_scorer, ConfusionMatrixDisplay
 
 
 #import lightgbm as lgb
@@ -32,9 +32,8 @@ def apply(
     filter=False,
     oversample=False
 ):
-    scaler = StandardScaler().fit(X=df)
-    X = pd.DataFrame(scaler.transform(df), index=df.index, columns=df.columns)
-    y = df['status']
+    parameter_tunning_sample = df.groupby('status', group_keys=False).apply(lambda x: x.sample(frac=0.3))
+    training_sample = df.drop(parameter_tunning_sample.index)
 
     instance_parameter_grid = {}
 
@@ -45,6 +44,49 @@ def apply(
 
     pipeline = []
 
+    if feature_selection:
+        rfe = SequentialFeatureSelector(model_instance(), n_features_to_select=3)
+
+        if filter:
+            rfe = SelectKBest(f_classif, k=10)
+
+
+        pipeline.append(('feature_selection', rfe))
+
+    if oversample:
+        pipeline.append(('sampling', SMOTE(n_jobs=-1)))
+
+    pipeline.append(("model", model_instance()))
+
+    pipe = Pipeline(steps=pipeline)
+
+    # https://scikit-learn.org/stable/auto_examples/model_selection/plot_multi_metric_evaluation.html
+    scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(
+        accuracy_score), "F1": make_scorer(f1_score)}
+
+    grid_search = GridSearchCV(
+        estimator=pipe,
+        param_grid=parameter_grid,
+        cv=cross_validation,
+        scoring=scoring,
+        refit="AUC"
+    )
+    
+    X = parameter_tunning_sample.drop(['status'], axis=1)
+    y = parameter_tunning_sample['status']
+
+    scaler = StandardScaler().fit(X)
+    X = pd.DataFrame(scaler.transform(X), index=X.index, columns=X.columns)
+    grid_search.fit(X, y)
+
+    # New pipeline
+    instance_parameter_grid = {}
+    for parameter_name, parameter_values in grid_search.best_params_.items():
+        instance_parameter_grid[parameter_name[7:]] = parameter_values
+    parameter_grid = instance_parameter_grid
+
+    pipeline = []
+    model_instance = model_instance(**parameter_grid)
     if feature_selection:
         rfe = SequentialFeatureSelector(model_instance, n_features_to_select=3)
 
@@ -58,24 +100,16 @@ def apply(
 
     pipeline.append(("model", model_instance))
 
-    estimator = Pipeline(steps=pipeline)
+    pipe = Pipeline(steps=pipeline)
 
-    # https://scikit-learn.org/stable/auto_examples/model_selection/plot_multi_metric_evaluation.html
-    scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(
-        accuracy_score), "F1": make_scorer(f1_score)}
-
-    grid_search = GridSearchCV(
-        estimator,
-        param_grid=parameter_grid,
-        cv=cross_validation,
-        scoring=scoring,
-        refit="AUC"
-    )
-
+    X = training_sample.drop(['status'], axis=1)
+    y = training_sample['status']
+    scaler = StandardScaler().fit(X)
+    X = pd.DataFrame(scaler.transform(X), index=X.index, columns=X.columns)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, random_state = 101) 
-    grid_search.fit(X_train, y_train)
-    grid_predictions = grid_search.predict(X_test) 
+    pipe.fit(X_train, y_train)
+    predictions = pipe.predict(X_test)
 
     if (feature_selection & oversample):
         display(Markdown("## Feature selection and oversample"))
@@ -84,19 +118,19 @@ def apply(
     elif (oversample):
         display(Markdown("## Oversample"))
     else:
-        display(Markdown("## No oversample nor feature selection"))
+        display(Markdown("## Neither oversample nor feature selection"))
 
 
 
-    display(Markdown(f"### **Classification report:** \n\n {classification_report(y_test, grid_predictions)}"))
-    display(Markdown(f"### **Best score:** \n\n {grid_search.best_score_}"))
+    display(Markdown(f"### **Classification report:** \n\n {classification_report(y_test, predictions)}"))
+    display(Markdown(f"### **Score:** \n\n {pipe.score(X_test, y_test)}"))
     display(Markdown(f"### **Best parameters:** \n\n {grid_search.best_params_}"))
     display(Markdown("### **Confusion matrix:** "))
-    plot_confusion_matrix(grid_search, X_test, y_test, cmap="PuBuGn")  
+    ConfusionMatrixDisplay.from_estimator(pipe, X_test, y_test)
     plt.show()
     display(Markdown("### **ROC curve:** "))
 
-    fpr, tpr, thresholds = roc_curve(y_test, grid_predictions)
+    fpr, tpr, thresholds = roc_curve(y_test, predictions)
     roc_auc = auc(fpr, tpr)
     display_roc = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc,
                                    estimator_name='example estimator')
@@ -106,4 +140,4 @@ def apply(
     display(Markdown("---"))
 
 
-    return grid_search
+    return pipe

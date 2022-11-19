@@ -111,7 +111,6 @@ def drop_duplicated_accounts(df):
 def drop_irrelevant_columns_from_main_df(df):
     to_drop = [
         'account_id',
-        'loan_id',
         'client_id',
         'disp_id',
         'card_id',
