@@ -28,7 +28,7 @@ def apply(
     parameter_grid,
     cross_validation=StratifiedKFold(n_splits=5),
     feature_selection=False,
-    filter=False,
+    filter=True,
     oversample=False
 ):
     parameter_tunning_sample = df.groupby('status', group_keys=False).apply(lambda x: x.sample(frac=0.3))
