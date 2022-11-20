@@ -231,19 +231,17 @@ def apply_cv(
     scores = cross_validate(pipe, X, y, cv=5, scoring=metrics)
 
     if (feature_selection & oversample):
-        display(Markdown("## Feature selection and oversample"))
+        display(Markdown("### Feature selection and oversample"))
     elif (feature_selection):
-        display(Markdown("## Feature selection"))
+        display(Markdown("### Feature selection"))
     elif (oversample):
-        display(Markdown("## Oversample"))
+        display(Markdown("### Oversample"))
     else:
-        display(Markdown("## Neither oversample nor feature selection"))
+        display(Markdown("### Neither oversample nor feature selection"))
 
 
-    display(Markdown(f"### **Best parameters:** \n\n {parameter_grid}"))
+    display(Markdown(f"Best parameters:\n {parameter_grid}"))
     for key in scores.keys():
-        display(Markdown(f"### **{key}**: {scores[key].mean()}"))
-                  
-    display(Markdown("---"))
+        display(Markdown(f"**{key}**: {scores[key].mean()}"))
 
     return scores['test_accuracy'].mean()
