@@ -8,7 +8,6 @@ from sklearn.feature_selection import SequentialFeatureSelector
 
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
-
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import classification_report, auc, roc_curve, RocCurveDisplay, accuracy_score, f1_score, make_scorer, ConfusionMatrixDisplay
@@ -19,6 +18,7 @@ from IPython.display import Markdown, display
 
 import warnings
 warnings.filterwarnings('ignore')
+from sklearn import tree
 
 
 
@@ -244,4 +244,19 @@ def apply_cv(
     for key in scores.keys():
         display(Markdown(f"**{key}**: {scores[key].mean()}"))
 
-    return scores['test_accuracy'].mean()
+    return scores['test_roc_auc'].mean()
+
+def draw_decision_tree(
+    df,
+    model_instance=tree.DecisionTreeClassifier(),
+):
+    X = df.drop(['status'], axis=1)
+    y = df['status']
+
+    scaler = StandardScaler().fit(X)
+    X = pd.DataFrame(scaler.transform(X), index=X.index, columns=X.columns)
+
+    clf = model_instance.fit(X,y)
+
+    tree.plot_tree(clf, feature_names=X.columns, filled= True)
+    plt.savefig('./results/decision_tree.pdf')
