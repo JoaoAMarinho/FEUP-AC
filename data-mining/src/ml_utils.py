@@ -60,17 +60,17 @@ def apply(
     pipe = Pipeline(steps=pipeline)
 
     # https://scikit-learn.org/stable/auto_examples/model_selection/plot_multi_metric_evaluation.html
-    scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(
-        accuracy_score), "F1": make_scorer(f1_score)}
+    """ scoring = {"AUC": "roc_auc", "Accuracy": make_scorer(
+        accuracy_score), "F1": make_scorer(f1_score)} """
 
     grid_search = GridSearchCV(
         estimator=pipe,
         param_grid=parameter_grid,
         cv=cross_validation,
-        scoring=scoring,
-        refit="AUC"
+        scoring="roc_auc",
+        refit="roc_auc"
     )
-    
+
     X = parameter_tunning_sample.drop(['status'], axis=1)
     y = parameter_tunning_sample['status']
 
