@@ -1,6 +1,21 @@
 import pandas as pd
 import numpy as np
+import re
+from sklearn import preprocessing
 
+#######
+# Utils
+#######
+
+def encode_category(df, col):
+    encoder = preprocessing.LabelEncoder()
+    encoder.fit(df[col].unique())
+    df[col] = encoder.transform(df[col])
+    return df
+
+def format_date(df, col, format='%y%m%d'):
+    df[col] = pd.to_datetime(df[col], format=format)
+    return df
 
 def parse_date(date):
     year = int(str(date)[0:2])
@@ -20,7 +35,7 @@ def parse_gender(row, birth_date):
 
 
 def calculate_age_loan(row):
-    date_loan = row["date_loan"]
+    date_loan = row["date"]
     birth_number = row["birth_number"]
 
     birth_date = parse_date(birth_number)
@@ -28,7 +43,7 @@ def calculate_age_loan(row):
     parse_gender(row, birth_date)
 
     if date_loan is not None:
-        date_loan = parse_date(row["date_loan"])
+        date_loan = parse_date(row["date"])
         date_loan = (
             date_loan["year"]
             - birth_date["year"]
@@ -45,61 +60,61 @@ def calculate_age_loan(row):
 
 def calculate_average_commited_crimes(df):
     def nan_commited_crimes(year):
-        return df["no. of commited crimes '" + str(year)].isna()
+        return df["no._of_commited_crimes_'" + str(year)].isna()
 
     # convert '?' to NaN
 
-    df["no. of commited crimes '95"] = pd.to_numeric(
-        df["no. of commited crimes '95"], errors="coerce"
+    df["no._of_commited_crimes_'95"] = pd.to_numeric(
+        df["no._of_commited_crimes_'95"], errors="coerce"
     )
-    df["no. of commited crimes '96"] = pd.to_numeric(
-        df["no. of commited crimes '96"], errors="coerce"
+    df["no._of_commited_crimes_'96"] = pd.to_numeric(
+        df["no._of_commited_crimes_'96"], errors="coerce"
     )
 
     # NaN values will be equaled to the value of the other column
 
-    df.loc[nan_commited_crimes(95), "no. of commited crimes '95"] = df[
-        "no. of commited crimes '96"
+    df.loc[nan_commited_crimes(95), "no._of_commited_crimes_'95"] = df[
+        "no._of_commited_crimes_'96"
     ]
-    df.loc[nan_commited_crimes(96), "no. of commited crimes '96"] = df[
-        "no. of commited crimes '95"
+    df.loc[nan_commited_crimes(96), "no._of_commited_crimes_'96"] = df[
+        "no._of_commited_crimes_'95"
     ]
 
-    # create column with mean from both years and drop previous and now useless columns
+    # create column with mean from both years
 
-    df["commited_crimes"] = df[
-        ["no. of commited crimes '95", "no. of commited crimes '96"]
-    ].mean(axis=1)
+    df["avg_commited_crimes"] = df[
+        ["no._of_commited_crimes_'95", "no._of_commited_crimes_'96"]
+    ].mean(axis=1) / df["no._of_inhabitants"]
 
     return df
 
 
 def calculate_average_unemployment_rate(df):
     def nan_unemployment_rate(year):
-        return df["unemploymant rate '" + str(year)].isna()
+        return df["unemploymant_rate_'" + str(year)].isna()
 
     # convert '?' to NaN
 
-    df["unemploymant rate '95"] = pd.to_numeric(
-        df["unemploymant rate '95"], errors="coerce"
+    df["unemploymant_rate_'95"] = pd.to_numeric(
+        df["unemploymant_rate_'95"], errors="coerce"
     )
-    df["unemploymant rate '96"] = pd.to_numeric(
-        df["unemploymant rate '96"], errors="coerce"
+    df["unemploymant_rate_'96"] = pd.to_numeric(
+        df["unemploymant_rate_'96"], errors="coerce"
     )
 
     # NaN values will be equaled to the value of the other column
 
-    df.loc[nan_unemployment_rate(95), "unemploymant rate '95"] = df[
-        "unemploymant rate '96"
+    df.loc[nan_unemployment_rate(95), "unemploymant_rate_'95"] = df[
+        "unemploymant_rate_'96"
     ]
-    df.loc[nan_unemployment_rate(96), "unemploymant rate '96"] = df[
-        "unemploymant rate '95"
+    df.loc[nan_unemployment_rate(96), "unemploymant_rate_'96"] = df[
+        "unemploymant_rate_'95"
     ]
 
     # create column with mean from both years and drop previous and now useless columns
 
     df["unemployment_rate"] = df[
-        ["unemploymant rate '95", "unemploymant rate '96"]
+        ["unemploymant_rate_'95", "unemploymant_rate_'96"]
     ].mean(axis=1)
 
     return df
@@ -271,4 +286,165 @@ def drop_outliers(df, col_name):
 def convert_n_numerical_to_numerical(df, col_name):
     mapping = {k: v for v, k in enumerate(df[col_name].unique())}
     df[col_name] = df[col_name].map(mapping)
+    return df
+
+def clean_district_columns(column):
+    column = column.strip()
+    column = column.split()
+    return '_'.join(column)
+
+#######
+# Clean
+#######
+
+def clean_district(df):
+    # Rename wrongly named columns
+    df = df.rename(clean_district_columns, axis='columns')
+
+    # Feature extraction
+    df = calculate_average_unemployment_rate(df)
+    df = calculate_average_commited_crimes(df)
+
+    # Entrepreneurs ratio
+    df['ratio_entrepreneurs'] = df['no._of_enterpreneurs_per_1000_inhabitants'] / 1000
+
+    # From percentage to ratio
+    df['ratio_of_urban_inhabitants'] = df['ratio_of_urban_inhabitants'] / 100
+
+    # Criminality growth
+    df['criminality_growth'] = (df["no._of_commited_crimes_'96"] - df["no._of_commited_crimes_'95"]) / df['no._of_inhabitants']
+
+    # Unemployment growth
+    df['unemployment_growth'] = df["unemploymant_rate_'96"] - df["unemploymant_rate_'95"]
+
+    # Drop
+    df.drop(columns=[
+        "no._of_commited_crimes_'95",
+        "no._of_commited_crimes_'96",
+        "unemploymant_rate_'95",
+        "unemploymant_rate_'96",
+        'no._of_enterpreneurs_per_1000_inhabitants',
+        'name'
+    ], inplace=True)
+
+    # Encode Region
+    df = encode_category(df, 'region')
+
+    return df
+
+
+def clean_transactions(df):
+
+    df = df.replace(r'^\s*$', np.NaN, regex=True)
+
+    # Drop bank column - only 75% not null values
+    df.drop(columns=['bank'], inplace=True)
+
+    # Fix Operation values
+    df["operation"].fillna("interest credited", inplace=True)
+
+    # Rename values
+    df.loc[df["operation"]=="credit in cash", "operation"] = "CashC"
+    df.loc[df["operation"]=="collection from another bank", "operation"] = "Coll"
+    df.loc[df["operation"]=="interest credited", "operation"] = "Interest"
+    df.loc[df["operation"]=="withdrawal in cash", "operation"] = "CashW"
+    df.loc[df["operation"]=="remittance to another bank", "operation"] = "Rem"
+    df.loc[df["operation"]=="credit card withdrawal", "operation"] = "CardW"
+
+    # Fix K_symbol values
+    df["k_symbol"].fillna("None", inplace=True)
+
+    # Rename values
+    df.loc[df["k_symbol"]=="insurrance payment", "k_symbol"] = "Insurance"
+    df.loc[df["k_symbol"]=="interest credited", "k_symbol"] = "Interest"
+    df.loc[df["k_symbol"]=="household", "k_symbol"] = "Household"
+    df.loc[df["k_symbol"]=="payment for statement", "k_symbol"] = "Statement"
+    df.loc[df["k_symbol"]=="sanction interest if negative balance", "k_symbol"] = "Sanction"
+    df.loc[df["k_symbol"]=="old-age pension", "k_symbol"] = "Pension"
+
+    # Type & Amount
+    # Rename withdrawal in cash - wrong label
+    df.loc[df['type'] == 'withdrawal in cash','type'] = 'withdrawal'
+
+    # Make withdrawal amount negative
+    df.loc[df["type"]=="withdrawal", "amount"] *= -1
+
+    # Format date
+    df = format_date(df, 'date')
+
+    # Feature Extraction
+
+    # Average Amount by type
+    avg_amounts = df.groupby(['account_id', 'type'], as_index=False)['amount'].mean()
+    
+    credit_amount_mean = avg_amounts[avg_amounts['type'] == 'credit']
+    credit_amount_mean.columns = ['account_id', 'type', 'avg_amount_credit']
+
+    withdrawal_amount_mean = avg_amounts[avg_amounts['type'] == 'withdrawal']
+    withdrawal_amount_mean.columns = ['account_id', 'type', 'avg_amount_withdrawal']
+
+    credit_amount_mean = credit_amount_mean.drop(columns=["type"])
+    withdrawal_amount_mean = withdrawal_amount_mean.drop(columns=["type"])
+
+    avg_amount_df = pd.merge(credit_amount_mean, withdrawal_amount_mean, on="account_id", how="outer")
+    avg_amount_df.fillna(0, inplace=True)
+
+    avg_amount_total = df.groupby(['account_id']).agg({'amount':['mean', 'min', 'max']}).reset_index()
+    avg_amount_total.columns = ['account_id', 'avg_amount_total', 'min_amount', 'max_amount']
+    new_df = pd.merge(avg_amount_df, avg_amount_total, on="account_id", how="outer")
+    new_df.fillna(0, inplace=True)
+
+    # Number of withdrawals and credits
+    type_counts = df.groupby(['account_id', 'type']).size().reset_index(name='counts')
+
+    credit_counts = type_counts[type_counts['type'] == 'credit']
+    credit_counts.columns = ['account_id', 'type', 'num_credits']
+    credit_counts = credit_counts.drop(columns=["type"])
+
+    withdrawal_counts = type_counts[type_counts['type'] == 'withdrawal']
+    withdrawal_counts.columns = ['account_id', 'type', 'num_withdrawals']
+    withdrawal_counts = withdrawal_counts.drop(columns=["type"])
+
+    trans_type_count_df = pd.merge(credit_counts, withdrawal_counts, on="account_id", how="outer")
+    trans_type_count_df.fillna(0, inplace=True)
+    trans_type_count_df['credit_ratio'] = trans_type_count_df['num_credits'] / (trans_type_count_df['num_credits'] + trans_type_count_df['num_withdrawals'])
+    # trans_type_count_df['withdrawal_ratio'] = trans_type_count_df['num_withdrawals'] / (trans_type_count_df['num_credits'] + trans_type_count_df['num_withdrawals'])
+
+    trans_type_count_df.drop(columns=['num_credits', 'num_withdrawals'], inplace=True)
+    new_df = pd.merge(new_df, trans_type_count_df, on="account_id", how="outer")
+
+    # Average, Min, Max Balance & Num Transactions
+    balance_count_df = df.groupby(['account_id'])["balance"]
+
+    balance_count_df = df.groupby(['account_id']).agg({'balance':['count', 'mean', 'min', 'max', 'std']}).reset_index()
+    balance_count_df.columns = ['account_id', 'num_trans', 'avg_balance', 'min_balance', 'max_balance', 'std_balance']
+
+    balance_count_df['negative_balance'] = balance_count_df['min_balance'] < 0
+    # balance_count_df.drop(columns=['min_balance'], inplace=True)
+    balance_count_df = encode_category(balance_count_df, 'negative_balance')
+
+    # Last Transaction
+    last_balance_df = df.sort_values('date', ascending=False).groupby(['account_id']).head(1).reset_index()
+    last_balance_df['last_balance_negative'] = last_balance_df['balance'] < 0
+    last_balance_df = encode_category(last_balance_df, 'last_balance_negative')
+    last_balance_df = last_balance_df[["account_id", "last_balance_negative"]]
+
+    new_df = pd.merge(new_df, balance_count_df, on="account_id", how="outer")
+    new_df = pd.merge(new_df, last_balance_df, on="account_id", how="outer")
+
+    return new_df
+
+def clean_disp(df):
+    # Keep only the owner of the account, because only the owner can ask for a loan
+    owners_df = df[df['type']=='OWNER']
+
+    disp_count = df.groupby(["account_id"]).agg({'type': 'count'}).reset_index()
+    disp_count.columns = ['account_id', 'disp_count']
+    df = owners_df.merge(disp_count, on="account_id", how="left")
+    df.fillna(0, inplace=True)
+
+    df['has_disponent'] = df['disp_count'] > 1
+    df.drop(columns=['type', 'disp_count'], inplace=True)
+    df = encode_category(df, 'has_disponent')
+
     return df
