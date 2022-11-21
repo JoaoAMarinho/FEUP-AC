@@ -514,12 +514,14 @@ def clean_cards(df_card, df_disp):
     # Has card
     df['has_card'] = df['num_cards'] > 0
     df.drop(columns=['num_cards'], inplace=True)
+    df = encode_category(df, 'has_card')
 
     return df
 
 def clean_columns(df):
     return df.drop(columns=["account_id", "disp_id", "client_id", "code",
-        "account_district_id", "client_district_id", "loan_date", "creation_date",
+        "account_district_id", "client_district_id",
+        "loan_date", "creation_date", "birth_date",
         "region", "no._of_inhabitants",
         "no._of_municipalities_with_inhabitants_<_499",
         "no._of_municipalities_with_inhabitants_500-1999",
