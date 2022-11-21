@@ -17,6 +17,24 @@ def format_date(df, col, format='%y%m%d'):
     df[col] = pd.to_datetime(df[col], format=format)
     return df
 
+def split_birth(birth_number):
+    year = 1900 + (birth_number // 10000)
+    month = (birth_number % 10000) // 100
+    day = birth_number % 100
+
+    # Male
+    if month < 50:
+       gender = 1
+    # Female
+    else:
+        gender = 0
+        month = month - 50
+    
+    birth_date = year*10000 + month*100 +day
+    birth_date = pd.to_datetime(birth_date, format='%Y%m%d')
+
+    return gender, birth_date
+
 def parse_date(date):
     year = int(str(date)[0:2])
     month = int(str(date)[2:4])
@@ -33,6 +51,16 @@ def parse_gender(row, birth_date):
     else:
         row["gender"] = "male"
 
+
+def calculate_birth_loan_difference(birth_date, loan_date):
+    frame = { 'birth': birth_date, 'granted': loan_date }
+    dates = pd.DataFrame(frame)
+
+    dates['birth'] = pd.to_datetime(dates['birth'], format='%Y-%m-%d')
+    dates['granted'] = pd.to_datetime(dates['granted'], format='%Y-%m-%d')
+    dates['difference'] = (dates['granted'] - dates['birth']).dt.days // 365
+
+    return dates['difference']
 
 def calculate_age_loan(row):
     date_loan = row["date"]
@@ -293,11 +321,54 @@ def clean_district_columns(column):
     column = column.split()
     return '_'.join(column)
 
+
 #######
 # Clean
 #######
 
-def clean_district(df):
+def clean_loans(df):
+    # Format loan date
+    df = format_date(df, 'date')
+    df.rename(columns={'date': 'loan_date'}, inplace=True)
+
+    return df
+
+def clean_accounts(df):
+    # Format creation date
+    df = format_date(df, 'date')
+
+    # Encode frequency
+    df = encode_category(df, 'frequency')
+
+    df.rename(columns={'district_id': 'account_district_id','date': 'creation_date'}, inplace=True)
+
+    return df
+
+def clean_disp(df):
+    # Keep only the owner of the account, because only the owner can ask for a loan
+    owners_df = df[df['type']=='OWNER']
+
+    disp_count = df.groupby(["account_id"]).agg({'type': 'count'}).reset_index()
+    disp_count.columns = ['account_id', 'disp_count']
+    df = owners_df.merge(disp_count, on="account_id", how="left")
+    df.fillna(0, inplace=True)
+
+    df['has_disponent'] = df['disp_count'] > 1
+    df.drop(columns=['type', 'disp_count'], inplace=True)
+    df = encode_category(df, 'has_disponent')
+
+    return df
+
+def clean_clients(df):
+    # Gender and Date of birth
+    df['gender'], df['birth_date'] = zip(*df['birth_number'].map(split_birth))
+
+    df.rename(columns={'district_id': 'client_district_id'}, inplace=True)
+    df.drop(columns=["birth_number"], inplace=True)
+
+    return df
+
+def clean_districts(df):
     # Rename wrongly named columns
     df = df.rename(clean_district_columns, axis='columns')
 
@@ -331,7 +402,6 @@ def clean_district(df):
     df = encode_category(df, 'region')
 
     return df
-
 
 def clean_transactions(df):
 
@@ -434,17 +504,60 @@ def clean_transactions(df):
 
     return new_df
 
-def clean_disp(df):
-    # Keep only the owner of the account, because only the owner can ask for a loan
-    owners_df = df[df['type']=='OWNER']
+def clean_cards(df_card, df_disp):
 
-    disp_count = df.groupby(["account_id"]).agg({'type': 'count'}).reset_index()
-    disp_count.columns = ['account_id', 'disp_count']
-    df = owners_df.merge(disp_count, on="account_id", how="left")
-    df.fillna(0, inplace=True)
+    df = df_disp.merge(df_card, on="disp_id", how="left")
 
-    df['has_disponent'] = df['disp_count'] > 1
-    df.drop(columns=['type', 'disp_count'], inplace=True)
-    df = encode_category(df, 'has_disponent')
+    df = df.groupby(['account_id']).agg({'card_id':['count']}).reset_index()
+    df.columns = ['account_id', 'num_cards']
+
+    # Has card
+    df['has_card'] = df['num_cards'] > 0
+    df.drop(columns=['num_cards'], inplace=True)
+
+    return df
+
+def clean_columns(df):
+    return df.drop(columns=["account_id", "disp_id", "client_id", "code",
+        "account_district_id", "client_district_id", "loan_date", "creation_date",
+        "region", "no._of_inhabitants",
+        "no._of_municipalities_with_inhabitants_<_499",
+        "no._of_municipalities_with_inhabitants_500-1999",
+        "no._of_municipalities_with_inhabitants_2000-9999",
+        "no._of_municipalities_with_inhabitants_>10000", "no._of_cities"])
+
+#######
+# Merge
+#######
+
+def merge_dfs(dfs):
+    [ account, disp, cards, client, district, loan, transaction ] = dfs
+
+    df = pd.merge(loan, account, on='account_id', how="left")
+    df = pd.merge(df, disp,  on='account_id', how="left")
+    df = pd.merge(df, client,  on='client_id', how="left")
+    df = pd.merge(df, district, left_on='client_district_id', right_on='code')
+    df = pd.merge(df, transaction, how="left", on="account_id")
+    df = pd.merge(df, cards, how="left", on="account_id")
+
+    return df
+
+
+##########
+# Features
+##########
+
+def extract_other_features(df):
+
+    # Age when the loan was requested
+    df['age_at_loan'] = calculate_birth_loan_difference(df['birth_date'], df['loan_date'])
+
+    # Days between loan and account creation
+    df['days_between'] = (df['loan_date'] - df['creation_date']).dt.days
+
+    # Boolean value telling if the account was created on the owner district
+    df['same_district'] = df['account_district_id'] == df['client_district_id']
+
+    df = df.set_index('loan_id')
 
     return df
