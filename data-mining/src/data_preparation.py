@@ -185,122 +185,6 @@ def calculate_credit_debit_ratio(df):
     df = df.replace([np.inf, -np.inf], 0)
     return df
 
-
-def drop_duplicated_accounts(df):
-    df.drop_duplicates(subset="account_id", inplace=True)
-    df.reset_index(drop=True, inplace=True)
-    return df
-
-
-def drop_irrelevant_columns_from_df(df):
-    to_drop = [
-        "account_id",
-        "district_id",
-        "date",
-        "date_loan",
-        "client_id",
-        "disp_id",
-        "birth_number",
-        "district_id_client",
-    ]
-    df = df.drop(to_drop, axis=1).reset_index(drop=True)
-    return df
-
-def drop_demographic_columns_from_df(df):
-    to_drop = [
-        "region",
-        "code",
-        "name",
-        "no. of inhabitants",
-        "no. of municipalities with inhabitants < 499",
-        "no. of municipalities with inhabitants 500-1999",
-        "no. of municipalities with inhabitants 2000-9999",
-        "no. of municipalities with inhabitants >10000",
-        "no. of cities",
-        "ratio of urban inhabitants",
-        "average salary",
-        "no. of enterpreneurs per 1000 inhabitants",
-        "unemploymant rate '95",
-        "unemploymant rate '96",
-        "no. of commited crimes '95",
-        "no. of commited crimes '96"
-    ]
-    df = df.drop(to_drop, axis=1).reset_index(drop=True)
-    return df
-
-def drop_irrelevant_columns_from_main_df(df):
-    to_drop = [
-        "account_id",
-        "client_id",
-        "disp_id",
-        "card_id",
-        "name ",
-        "code",
-        "region",
-        "gender",
-        "type_card",
-        "issued",
-        "unemploymant rate '95",
-        "unemploymant rate '96",
-        "no. of commited crimes '95",
-        "no. of commited crimes '96",
-    ]
-    df = df.drop(to_drop, axis=1).reset_index(drop=True)
-    return df
-
-
-def drop_irrelevant_columns_from_transactions_df(df):
-    to_drop = [
-        "k_symbol",
-        "account_id",
-        "trans_id_",
-        "date_transaction",
-    ]
-    df = df.drop(to_drop, axis=1).reset_index(drop=True)
-    return df
-
-
-def drop_demographic_columns_from_transactions_df(df):
-    df = df.drop(
-        [
-            "no. of inhabitants",
-            "no. of municipalities with inhabitants < 499",
-            "no. of municipalities with inhabitants 500-1999",
-            "no. of municipalities with inhabitants 2000-9999 ",
-            "no. of municipalities with inhabitants >10000",
-            "no. of cities",
-            "ratio of urban inhabitants",
-            "average salary",
-            "no. of enterpreneurs per 1000 inhabitants",
-            "unemployment_rate",
-            "commited_crimes",
-        ],
-        axis=1,
-    ).reset_index(drop=True)
-    return df
-
-
-def rename_main_df_columns(df):
-    to_rename = {}
-    df = df.rename(to_rename, axis=1)
-    return df
-
-
-def drop_irrelevant_columns(df, to_drop):
-    df = df.drop(to_drop, axis=1).reset_index(drop=True)
-    return df
-
-
-def rename_transactions_df_columns(df):
-    to_rename = {
-        "trans_id_count": "transactions_count",
-        "credit": "credits_count",
-        "debit": "debits_count",
-    }
-    df = df.rename(to_rename, axis=1)
-    return df
-
-
 def drop_outliers(df, col_name):
     q1 = df[col_name].quantile(0.25)
     q3 = df[col_name].quantile(0.75)
@@ -309,17 +193,6 @@ def drop_outliers(df, col_name):
     fence_high = q3 + 1.5 * iqr
     df_out = df.loc[(df[col_name] > fence_low) & (df[col_name] < fence_high)]
     return df_out
-
-
-def convert_n_numerical_to_numerical(df, col_name):
-    mapping = {k: v for v, k in enumerate(df[col_name].unique())}
-    df[col_name] = df[col_name].map(mapping)
-    return df
-
-def clean_district_columns(column):
-    column = column.strip()
-    column = column.split()
-    return '_'.join(column)
 
 
 #######
@@ -369,6 +242,10 @@ def clean_clients(df):
     return df
 
 def clean_districts(df):
+    def clean_district_columns(column):
+        column = column.strip()
+        column = column.split()
+        return '_'.join(column)
     # Rename wrongly named columns
     df = df.rename(clean_district_columns, axis='columns')
 
@@ -559,6 +436,7 @@ def extract_other_features(df):
 
     # Boolean value telling if the account was created on the owner district
     df['same_district'] = df['account_district_id'] == df['client_district_id']
+    df = encode_category(df, 'same_district')
 
     df = df.set_index('loan_id')
 
