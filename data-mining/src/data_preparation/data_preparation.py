@@ -260,7 +260,7 @@ def clean_districts(df):
 
     return df
 
-def clean_transactions(df):
+def clean_transactions(df, op=False):
 
     df = df.replace(r'^\s*$', np.NaN, regex=True)
 
@@ -298,6 +298,7 @@ def clean_transactions(df):
 
     # Format date
     df = format_date(df, 'date')
+
 
     # Feature Extraction
 
@@ -358,6 +359,66 @@ def clean_transactions(df):
 
     new_df = pd.merge(new_df, balance_count_df, on="account_id", how="outer")
     new_df = pd.merge(new_df, last_balance_df, on="account_id", how="outer")
+
+    # Operation
+    if op:
+        operation = df.groupby(['account_id', 'operation']).agg({'trans_id': ['count']}).reset_index()
+        operation.columns = ['account_id', 'operation', 'operation_count']
+        
+        # credit in cash = CashC
+        cashC_operation = operation[operation['operation'] == 'CashC']
+        cashC_operation.columns = ['account_id', 'operation', 'num_cash_credit']
+        cashC_operation = cashC_operation.drop(['operation'], axis=1)
+
+        # collection from another bank = Coll
+        coll_operation = operation[operation['operation'] == 'Coll']
+        coll_operation.columns = ['account_id', 'operation', 'num_coll']
+        coll_operation = coll_operation.drop(['operation'], axis=1)
+
+        # interest credited = Interest
+        interest_operation = operation[operation['operation'] == 'Interest']
+        interest_operation.columns = ['account_id', 'operation', 'num_interest']
+        interest_operation = interest_operation.drop(['operation'], axis=1)
+
+        # withdrawal in cash = CashW
+        cashW_operation = operation[operation['operation'] == 'CashW']
+        cashW_operation.columns = ['account_id', 'operation', 'num_cash_withdrawal']
+        cashW_operation = cashW_operation.drop(['operation'], axis=1)
+
+        # remittance to another bank = Rem
+        rem_operation = operation[operation['operation'] == 'Rem']
+        rem_operation.columns = ['account_id', 'operation', 'num_rem']
+        rem_operation = rem_operation.drop(['operation'], axis=1)
+
+        # credit card withdrawal = CardW
+        cardW_operation = operation[operation['operation'] == 'CardW']
+        cardW_operation.columns = ['account_id', 'operation', 'num_card_withdrawal']
+        cardW_operation = cardW_operation.drop(['operation'], axis=1)
+        
+        operation_df = cashC_operation.merge(coll_operation, on='account_id',how='outer')
+        operation_df = operation_df.merge(interest_operation, on='account_id',how='outer')
+        operation_df = operation_df.merge(cashW_operation, on='account_id',how='outer')
+        operation_df = operation_df.merge(rem_operation, on='account_id',how='outer')
+        operation_df = operation_df.merge(cardW_operation, on='account_id',how='outer')
+        operation_df.fillna(0, inplace=True)
+
+        new_df = pd.merge(new_df, operation_df, on="account_id", how="outer")
+        
+        ###
+        #  operation_num = ['num_cash_credit','num_rem','num_card_withdrawal', 'num_cash_withdrawal', 'num_interest', 'num_coll']
+        #  operation_df['total_operations'] = operation_df[operation_num].sum(axis=1)
+
+        # Calculate Ratio for each operation
+        #  operation_df['cash_credit_ratio'] = operation_df['num_cash_credit']/operation_df['total_operations']
+        #  operation_df['rem_ratio'] = operation_df['num_rem']/operation_df['total_operations']
+        #  operation_df['card_withdrawal_ratio'] = operation_df['num_card_withdrawal']/operation_df['total_operations']
+        #  operation_df['cash_withdrawal_ratio'] = operation_df['num_cash_withdrawal']/operation_df['total_operations']
+        #  operation_df['interest_ratio'] = operation_df['num_interest']/operation_df['total_operations']
+        #  operation_df['coll_ratio'] = operation_df['num_coll']/operation_df['total_operations']
+
+        #  operation_df.drop(columns=operation_num, inplace=True)
+        #  operation_df.drop(columns=['total_operations'], inplace=True)
+        ###
 
     return new_df
 
