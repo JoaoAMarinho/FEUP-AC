@@ -438,6 +438,4 @@ def extract_other_features(df):
     df['same_district'] = df['account_district_id'] == df['client_district_id']
     df = encode_category(df, 'same_district')
 
-    df = df.set_index('loan_id')
-
     return df
