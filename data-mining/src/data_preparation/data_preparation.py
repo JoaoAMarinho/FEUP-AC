@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import re
 from sklearn import preprocessing
 
 #######
@@ -13,8 +12,8 @@ def encode_category(df, col):
     df[col] = encoder.transform(df[col])
     return df
 
-def format_date(df, col, format='%y%m%d'):
-    df[col] = pd.to_datetime(df[col], format=format)
+def format_date(df, col):
+    df[col] = pd.to_datetime(df[col], format='%y%m%d')
     return df
 
 def split_birth(birth_number):
@@ -41,17 +40,6 @@ def parse_date(date):
     day = int(str(date)[4:6])
     return {"year": year, "month": month, "day": day}
 
-
-def parse_gender(row, birth_date):
-    female = birth_date["month"] >= 50
-
-    if female:
-        row["gender"] = "female"
-        birth_date["month"] -= 50
-    else:
-        row["gender"] = "male"
-
-
 def calculate_birth_loan_difference(birth_date, loan_date):
     frame = { 'birth': birth_date, 'granted': loan_date }
     dates = pd.DataFrame(frame)
@@ -68,8 +56,6 @@ def calculate_age_loan(row):
 
     birth_date = parse_date(birth_number)
 
-    parse_gender(row, birth_date)
-
     if date_loan is not None:
         date_loan = parse_date(row["date"])
         date_loan = (
@@ -84,7 +70,6 @@ def calculate_age_loan(row):
     row["age_loan"] = date_loan
 
     return row
-
 
 def calculate_average_commited_crimes(df):
     def nan_commited_crimes(year):
@@ -116,7 +101,6 @@ def calculate_average_commited_crimes(df):
 
     return df
 
-
 def calculate_average_unemployment_rate(df):
     def nan_unemployment_rate(year):
         return df["unemploymant_rate_'" + str(year)].isna()
@@ -147,16 +131,13 @@ def calculate_average_unemployment_rate(df):
 
     return df
 
-
 def calculate_number_of_disponents(df):
     disp_count = df.groupby(["account_id"])["disp_id"].nunique()
     return df.merge(disp_count, on="account_id", suffixes=("", "_count"), how="left")
 
-
 def calculate_diff_salary_loan(df):
     df["diff_salary_loan"] = df["average salary"] - df["payments"]
     return df
-
 
 def calculate_transaction_count(df):
     transaction_count = df.groupby(["account_id"])["trans_id"].nunique()
@@ -164,7 +145,6 @@ def calculate_transaction_count(df):
         transaction_count, on="account_id", suffixes=["_", "_count"], how="left"
     )
     return df
-
 
 def calculate_credit_debit_ratio(df):
     count_transactions_per_type = (
@@ -396,6 +376,8 @@ def clean_cards(df_card, df_disp):
     return df
 
 def clean_columns(df):
+    df = df.set_index('loan_id')
+
     return df.drop(columns=["account_id", "disp_id", "client_id", "code",
         "account_district_id", "client_district_id",
         "loan_date", "creation_date", "birth_date",
