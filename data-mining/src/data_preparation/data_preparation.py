@@ -260,7 +260,7 @@ def clean_districts(df):
 
     return df
 
-def clean_transactions(df, op=False):
+def clean_transactions(df, op=False, k_symbol=False):
 
     df = df.replace(r'^\s*$', np.NaN, regex=True)
 
@@ -408,7 +408,7 @@ def clean_transactions(df, op=False):
         #  operation_num = ['num_cash_credit','num_rem','num_card_withdrawal', 'num_cash_withdrawal', 'num_interest', 'num_coll']
         #  operation_df['total_operations'] = operation_df[operation_num].sum(axis=1)
 
-        # Calculate Ratio for each operation
+        #  Calculate Ratio for each operation
         #  operation_df['cash_credit_ratio'] = operation_df['num_cash_credit']/operation_df['total_operations']
         #  operation_df['rem_ratio'] = operation_df['num_rem']/operation_df['total_operations']
         #  operation_df['card_withdrawal_ratio'] = operation_df['num_card_withdrawal']/operation_df['total_operations']
@@ -419,6 +419,44 @@ def clean_transactions(df, op=False):
         #  operation_df.drop(columns=operation_num, inplace=True)
         #  operation_df.drop(columns=['total_operations'], inplace=True)
         ###
+
+     # K-Symbol
+    if k_symbol:
+        symbol_amount = df.groupby(['account_id', 'k_symbol']).agg({'amount': ['mean', 'count']}).reset_index()
+        symbol_amount.columns = ['account_id', 'k_symbol', 'symbol_amount_mean', 'symbol_amount_count']
+
+        no_symbol = symbol_amount[symbol_amount['k_symbol'] == 'None']
+        no_symbol.columns = ['account_id', 'k_symbol', 'mean_no_symbol', 'num_no_symbol']
+        no_symbol = no_symbol.drop(['k_symbol'], axis=1)
+
+        household_symbol = symbol_amount[symbol_amount['k_symbol'] == 'Household']
+        household_symbol.columns = ['account_id', 'k_symbol', 'mean_household', 'num_household']
+        household_symbol = household_symbol.drop(['k_symbol'], axis=1)
+
+        statement_symbol = symbol_amount[symbol_amount['k_symbol'] == 'Statement']
+        statement_symbol.columns = ['account_id', 'k_symbol', 'mean_statement', 'num_statement']
+        statement_symbol = statement_symbol.drop(['k_symbol'], axis=1)
+
+        insurance_symbol = symbol_amount[symbol_amount['k_symbol'] == 'Insurance']
+        insurance_symbol.columns = ['account_id', 'k_symbol', 'mean_insurance', 'num_insurance']
+        insurance_symbol = insurance_symbol.drop(['k_symbol'], axis=1)
+
+        sanction_symbol = symbol_amount[symbol_amount['k_symbol'] == 'Sanction']
+        sanction_symbol.columns = ['account_id', 'k_symbol', 'mean_sanction', 'num_sanction']
+        sanction_symbol = sanction_symbol.drop(['k_symbol'], axis=1)
+
+        pension_symbol = symbol_amount[symbol_amount['k_symbol'] == 'Pension']
+        pension_symbol.columns = ['account_id', 'k_symbol', 'mean_pension', 'num_pension']
+        pension_symbol = pension_symbol.drop(['k_symbol'], axis=1)
+
+        symbol_amount_df = no_symbol.merge(household_symbol, on='account_id',how='outer')
+        symbol_amount_df = symbol_amount_df.merge(statement_symbol, on='account_id',how='outer')
+        symbol_amount_df = symbol_amount_df.merge(insurance_symbol, on='account_id',how='outer')
+        symbol_amount_df = symbol_amount_df.merge(sanction_symbol, on='account_id',how='outer')
+        symbol_amount_df = symbol_amount_df.merge(pension_symbol, on='account_id',how='outer')
+        symbol_amount_df.fillna(0, inplace=True)
+
+        new_df = pd.merge(new_df, symbol_amount_df, on="account_id", how="outer")
 
     return new_df
 
