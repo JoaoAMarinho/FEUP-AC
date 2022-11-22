@@ -376,6 +376,8 @@ def clean_cards(df_card, df_disp):
     return df
 
 def clean_columns(df):
+    df = df.set_index('loan_id')
+
     return df.drop(columns=["account_id", "disp_id", "client_id", "code",
         "account_district_id", "client_district_id",
         "loan_date", "creation_date", "birth_date",
