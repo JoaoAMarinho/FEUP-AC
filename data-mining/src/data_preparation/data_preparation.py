@@ -34,6 +34,12 @@ def split_birth(birth_number):
 
     return gender, birth_date
 
+def transform_status(df):
+    # Transform Status: 1 => 0 and -1 => 1
+    df["status"] = df["status"].replace({1: 0})
+    df["status"] = df["status"].replace({-1: 1})
+    return df
+
 def parse_date(date):
     year = int(str(date)[0:2])
     month = int(str(date)[2:4])
