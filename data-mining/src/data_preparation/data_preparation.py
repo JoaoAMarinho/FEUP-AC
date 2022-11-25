@@ -192,18 +192,19 @@ def clean_loans(df):
 
     return df
 
-def clean_accounts(df):
+def clean_accounts(df, clean=True):
     # Format creation date
     df = format_date(df, 'date')
 
     # Encode frequency
-    df = encode_category(df, 'frequency')
+    if clean:
+        df = encode_category(df, 'frequency')
 
     df.rename(columns={'district_id': 'account_district_id','date': 'creation_date'}, inplace=True)
 
     return df
 
-def clean_disp(df):
+def clean_disp(df, clean=True):
     # Keep only the owner of the account, because only the owner can ask for a loan
     owners_df = df[df['type']=='OWNER']
 
@@ -214,20 +215,26 @@ def clean_disp(df):
 
     df['has_disponent'] = df['disp_count'] > 1
     df.drop(columns=['type', 'disp_count'], inplace=True)
-    df = encode_category(df, 'has_disponent')
+
+    if clean:
+        df = encode_category(df, 'has_disponent')
 
     return df
 
-def clean_clients(df):
+def clean_clients(df, clean=True):
     # Gender and Date of birth
     df['gender'], df['birth_date'] = zip(*df['birth_number'].map(split_birth))
 
+    if not clean:
+        df["gender"] = df["gender"].replace({0: 'female'})
+        df["gender"] = df["gender"].replace({1: 'male'})
+        
     df.rename(columns={'district_id': 'client_district_id'}, inplace=True)
     df.drop(columns=["birth_number"], inplace=True)
 
     return df
 
-def clean_districts(df):
+def clean_districts(df, clean=True):
     def clean_district_columns(column):
         column = column.strip()
         column = column.split()
@@ -262,11 +269,12 @@ def clean_districts(df):
     ], inplace=True)
 
     # Encode Region
-    df = encode_category(df, 'region')
+    if not clean:
+        df = encode_category(df, 'region')
 
     return df
 
-def clean_transactions(df, op=False, k_symbol=False):
+def clean_transactions(df, clean=True, op=False, k_symbol=False):
 
     df = df.replace(r'^\s*$', np.NaN, regex=True)
 
@@ -355,12 +363,16 @@ def clean_transactions(df, op=False, k_symbol=False):
 
     balance_count_df['negative_balance'] = balance_count_df['min_balance'] < 0
     # balance_count_df.drop(columns=['min_balance'], inplace=True)
-    balance_count_df = encode_category(balance_count_df, 'negative_balance')
+
+    if clean:
+        balance_count_df = encode_category(balance_count_df, 'negative_balance')
 
     # Last Transaction
     last_balance_df = df.sort_values('date', ascending=False).groupby(['account_id']).head(1).reset_index()
     last_balance_df['last_balance_negative'] = last_balance_df['balance'] < 0
-    last_balance_df = encode_category(last_balance_df, 'last_balance_negative')
+
+    if clean:
+        last_balance_df = encode_category(last_balance_df, 'last_balance_negative')
     last_balance_df = last_balance_df[["account_id", "last_balance_negative"]]
 
     new_df = pd.merge(new_df, balance_count_df, on="account_id", how="outer")
@@ -466,7 +478,7 @@ def clean_transactions(df, op=False, k_symbol=False):
 
     return new_df
 
-def clean_cards(df_card, df_disp):
+def clean_cards(df_card, df_disp, clean=True):
 
     df = df_disp.merge(df_card, on="disp_id", how="left")
 
@@ -476,7 +488,9 @@ def clean_cards(df_card, df_disp):
     # Has card
     df['has_card'] = df['num_cards'] > 0
     df.drop(columns=['num_cards'], inplace=True)
-    df = encode_category(df, 'has_card')
+
+    if clean:
+        df = encode_category(df, 'has_card')
 
     return df
 
@@ -513,7 +527,7 @@ def merge_dfs(dfs):
 # Features
 ##########
 
-def extract_other_features(df):
+def extract_other_features(df, clean=True):
 
     # Age when the loan was requested
     df['age_at_loan'] = calculate_birth_loan_difference(df['birth_date'], df['loan_date'])
@@ -523,6 +537,8 @@ def extract_other_features(df):
 
     # Boolean value telling if the account was created on the owner district
     df['same_district'] = df['account_district_id'] == df['client_district_id']
-    df = encode_category(df, 'same_district')
+
+    if clean:
+        df = encode_category(df, 'same_district')
 
     return df
