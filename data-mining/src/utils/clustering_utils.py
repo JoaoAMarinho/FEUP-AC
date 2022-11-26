@@ -1,6 +1,5 @@
 from matplotlib.pyplot import cm
 from matplotlib import colors
-from utils.clean_utils import *
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import KMeans
 from sklearn_extra.cluster import KMedoids
@@ -15,6 +14,8 @@ import scipy.cluster.hierarchy as sch
 from collections import Counter
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import utils.clean_utils as cu
 
 DEBUG = True
 #######
@@ -96,18 +97,22 @@ def silhouette_score(df, labels):
 # Features
 ##########
 
-def merge_transactions_clients(db):
-    clients = clean_clients(db)
-    accounts = clean_accounts(db)
-    district = clean_districts(db)
-    disp = db.df_query('SELECT * FROM disposition')
-    transactions = clean_transactions(db, False, True)
+def merge_transactions_clients(dfs):
+    [ accounts, disp, clients, districts, cards, trans ] = dfs
 
-    df = pd.merge(clients, disp,  on='client_id', how="left")
-    df = pd.merge(df, accounts,  on='account_id', how="left")
-    df = pd.merge(df, district, left_on='client_district_id', right_on='district_id')
+    clients = cu.clean_clients(clients, clean=False)
+    accounts = cu.clean_accounts(accounts, clean=False)
+    districts = cu.clean_districts(districts, clean=False)
+    disp = cu.clean_disp(disp, clean=False)
+    transactions = cu.clean_transactions(trans, clean=False, op=False, k_symbol=True)
+    cards = cu.clean_cards(cards, disp, clean=False)
+
+    df = pd.merge(clients, disp, on='client_id', how="left")
+    df = pd.merge(df, accounts, on='account_id', how="left", suffixes=('_client', '_account'))
+    df = pd.merge(df, districts, left_on='client_district_id', right_on='code')
     df = pd.merge(df, transactions, how="left", on="account_id")
-    
+    df = pd.merge(df, cards, how="left", on="account_id")
+
     return df
 
 
@@ -262,6 +267,70 @@ def clustering_kmeans(df, n_clusters=3, init_method='k-means++', n_components=2)
         df_copy.insert(loc=0, column='cluster', value=kmeans.labels_)
         print(df_copy.describe())
 
+def clustering_kmedoids(df, n_clusters=3, init_method='k-medoids++', n_components=2):
+    df_copy = df.copy()
+    
+    scaler = MinMaxScaler()
+    scaler.fit(df_copy)
+    X_scale = scaler.transform(df_copy)
+    df_copy = pd.DataFrame(X_scale, columns=df_copy.columns)
+    
+    # Reduce dimensionality with PCA
+    if len(df_copy.columns) > 3:
+        # Analyse PCA
+        if DEBUG:
+            pca_analysis(df)
+        df_pca = pca(n_components, df_copy)
+        if DEBUG:
+            elbow_method(df_pca)
+
+        # Apply K-Medoids
+        kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method)
+        kmedoids.fit(df_pca)
+ 
+        print("\nKMedoids Clusters: \n", Counter(kmedoids.labels_))
+        print("KMedoids Centers: \n", kmedoids.cluster_centers_)
+        print(f'KMedoids Inertia: \n{kmedoids.inertia_}')
+        print(f'KMedoids Silhouette Score: \n{silhouette_score(df_pca, kmedoids.labels_)}')
+
+        # Plot results
+        if n_components == 2:
+            Scene = dict(xaxis = dict(title  = 'PC1'),yaxis = dict(title  = 'PC2'))
+            trace = go.Scatter(x=df_pca.iloc[:,0], y=df_pca.iloc[:,1], mode='markers',marker=dict(color = kmedoids.labels_, colorscale='rainbow', size = 6, line = dict(width = 0)))
+        else: 
+            Scene = dict(xaxis = dict(title  = 'PC1'),yaxis = dict(title  = 'PC2'), zaxis= dict(title  = 'PC3'))
+            trace = go.Scatter3d(x=df_pca.iloc[:,0], y=df_pca.iloc[:,1], z=df_pca.iloc[:,2], mode='markers',marker=dict(color = kmedoids.labels_, colorscale='rainbow', size = 6, line = dict(width = 0)))
+        layout = go.Layout(scene = Scene, height = 1000,width = 1000)
+        data = [trace]
+        fig = go.Figure(data = data, layout = layout)
+        fig.update_layout(title="KMedoids Clusters",font=dict(size=16))
+        fig.show()
+    else:
+        if DEBUG:
+            elbow_method(df_copy)
+
+        # Apply K-Medoids
+        kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method)
+        kmedoids.fit_predict(df_copy)
+
+        print("KMedoids Clusters: \n", Counter(kmedoids.labels_))
+        print("KMedoids Centers: \n", kmedoids.cluster_centers_)
+        print(f'KMedoids Inertia: {kmedoids.inertia_}')
+        print(f'KMedoids Silhouette Score: {silhouette_score(df_copy, kmedoids.labels_)}')
+
+        # Plot results
+        if len(df_copy.columns) == 2:
+            Scene = dict(xaxis = dict(title = df_copy.columns[0]),yaxis = dict(title  = df_copy.columns[1]))
+            trace = go.Scatter(x=df_copy.iloc[:,0], y=df_copy.iloc[:,1], mode='markers',marker=dict(color=kmedoids.labels_, colorscale='rainbow', size = 7, line = dict(width = 0)))
+        else: 
+            Scene = dict(xaxis = dict(title = df_copy.columns[0]),yaxis = dict(title = df_copy.columns[1]), zaxis= dict(title = df_copy.columns[2]))
+            trace = go.Scatter3d(x=df_copy.iloc[:,0], y=df_copy.iloc[:,1], z=df_copy.iloc[:,2], mode='markers',marker=dict(color=kmedoids.labels_, colorscale='rainbow', size = 7, line = dict(width = 0)))
+        layout = go.Layout(scene = Scene, height = 1000,width = 1000)
+        data = [trace]
+        fig = go.Figure(data = data, layout = layout)
+        fig.update_layout(title="KMedoids Clusters", font=dict(size=16))
+        fig.show()
+
 def clustering_dbscan(df, eps=0.9, min_samples=4, n_components=2):
     df_copy = df.copy()
 
@@ -330,70 +399,6 @@ def clustering_dbscan(df, eps=0.9, min_samples=4, n_components=2):
         fig.update_layout(title="'DBSCAN Clusters'", font=dict(size=12,))
         fig.show()
 
-def clustering_kmedoids(df, n_clusters=3, init_method='k-medoids++', n_components=2):
-    df_copy = df.copy()
-    
-    scaler = MinMaxScaler()
-    scaler.fit(df_copy)
-    X_scale = scaler.transform(df_copy)
-    df_copy = pd.DataFrame(X_scale, columns=df_copy.columns)
-    
-    # Reduce dimensionality with PCA
-    if len(df_copy.columns) > 3:
-        # Analyse PCA
-        if DEBUG:
-            pca_analysis(df)
-        df_pca = pca(n_components, df_copy)
-        if DEBUG:
-            elbow_method(df_pca)
-
-        # Apply K-Medoids
-        kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method)
-        kmedoids.fit(df_pca)
- 
-        print("\nKMedoids Clusters: \n", Counter(kmedoids.labels_))
-        print("KMedoids Centers: \n", kmedoids.cluster_centers_)
-        print(f'KMedoids Inertia: \n{kmedoids.inertia_}')
-        print(f'KMedoids Silhouette Score: \n{silhouette_score(df_pca, kmedoids.labels_)}')
-
-        # Plot results
-        if n_components == 2:
-            Scene = dict(xaxis = dict(title  = 'PC1'),yaxis = dict(title  = 'PC2'))
-            trace = go.Scatter(x=df_pca.iloc[:,0], y=df_pca.iloc[:,1], mode='markers',marker=dict(color = kmedoids.labels_, colorscale='rainbow', size = 6, line = dict(width = 0)))
-        else: 
-            Scene = dict(xaxis = dict(title  = 'PC1'),yaxis = dict(title  = 'PC2'), zaxis= dict(title  = 'PC3'))
-            trace = go.Scatter3d(x=df_pca.iloc[:,0], y=df_pca.iloc[:,1], z=df_pca.iloc[:,2], mode='markers',marker=dict(color = kmedoids.labels_, colorscale='rainbow', size = 6, line = dict(width = 0)))
-        layout = go.Layout(scene = Scene, height = 1000,width = 1000)
-        data = [trace]
-        fig = go.Figure(data = data, layout = layout)
-        fig.update_layout(title="KMedoids Clusters",font=dict(size=16))
-        fig.show()
-    else:
-        if DEBUG:
-            elbow_method(df_copy)
-
-        # Apply K-Medoids
-        kmedoids = KMedoids(n_clusters=n_clusters, method='pam', init=init_method)
-        kmedoids.fit_predict(df_copy)
-
-        print("KMedoids Clusters: \n", Counter(kmedoids.labels_))
-        print("KMedoids Centers: \n", kmedoids.cluster_centers_)
-        print(f'KMedoids Inertia: {kmedoids.inertia_}')
-        print(f'KMedoids Silhouette Score: {silhouette_score(df_copy, kmedoids.labels_)}')
-
-        # Plot results
-        if len(df_copy.columns) == 2:
-            Scene = dict(xaxis = dict(title = df_copy.columns[0]),yaxis = dict(title  = df_copy.columns[1]))
-            trace = go.Scatter(x=df_copy.iloc[:,0], y=df_copy.iloc[:,1], mode='markers',marker=dict(color=kmedoids.labels_, colorscale='rainbow', size = 7, line = dict(width = 0)))
-        else: 
-            Scene = dict(xaxis = dict(title = df_copy.columns[0]),yaxis = dict(title = df_copy.columns[1]), zaxis= dict(title = df_copy.columns[2]))
-            trace = go.Scatter3d(x=df_copy.iloc[:,0], y=df_copy.iloc[:,1], z=df_copy.iloc[:,2], mode='markers',marker=dict(color=kmedoids.labels_, colorscale='rainbow', size = 7, line = dict(width = 0)))
-        layout = go.Layout(scene = Scene, height = 1000,width = 1000)
-        data = [trace]
-        fig = go.Figure(data = data, layout = layout)
-        fig.update_layout(title="KMedoids Clusters", font=dict(size=16))
-        fig.show()
-
 
 ###########
 # Clusters
@@ -433,22 +438,21 @@ def clustering_economic():
     clustering_kmedoids(df4, 3)
 
 
-def clustering_demographic():
-    df =  merge_datasets(db,False, True)
-    df['age'] = df['birth_date'].apply(lambda x: calculate_age(x))
-    df = extract_features(df)
+def clustering_demographic(dfs, df=None):
+    if df is None:
+        df = merge_transactions_clients(dfs)
 
     # CLUSTERING 1
-    df1 = df[['ratio_entrepreneurs', 'avg_crimes', 'avg_unemployment']]
+    df1 = df[['avg_balance', 'average_salary', 'age_at_loan']]
     clustering_kmeans(df1)
+    clustering_kmedoids(df1)
 
     # CLUSTERING 2
-    df2 =  merge_transactions_clients(db)
-    df2 = df[[ 'nr_municip_inhabitants_499', 'nr_municip_inhabitants_2000_9999', 'average_salary']]
-    df2.dropna(inplace=True)
-    clustering_kmeans(df2)
-    clustering_kmedoids(df2, 2)
+    # df2 = df[[ 'no._of_municipalities_with_inhabitants_<_499', 'no._of_municipalities_with_inhabitants_2000-9999', 'average_salary']]
+    # df2.dropna(inplace=True)
+    # clustering_kmeans(df2)
+    # clustering_kmedoids(df2, 2)
 
     # CLUSTERING 3
-    df3 = df[['nr_municip_inhabitants_2000_9999', 'avg_crimes', 'ratio_entrepreneurs']]
-    clustering_kmeans(df3)
+    # df3 = df[['no._of_municipalities_with_inhabitants_2000-9999', 'avg_commited_crimes', 'ratio_entrepreneurs']]
+    # clustering_kmeans(df3)
