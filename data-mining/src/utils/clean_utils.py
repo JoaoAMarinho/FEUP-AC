@@ -185,13 +185,6 @@ def drop_outliers(df, col_name):
 # Clean
 #######
 
-def clean_loans(df):
-    # Format loan date
-    df = format_date(df, 'date')
-    df.rename(columns={'date': 'loan_date'}, inplace=True)
-
-    return df
-
 def clean_accounts(df, clean=True):
     # Format creation date
     df = format_date(df, 'date')
@@ -228,7 +221,7 @@ def clean_clients(df, clean=True):
     if not clean:
         df["gender"] = df["gender"].replace({0: 'female'})
         df["gender"] = df["gender"].replace({1: 'male'})
-        
+
     df.rename(columns={'district_id': 'client_district_id'}, inplace=True)
     df.drop(columns=["birth_number"], inplace=True)
 
@@ -271,6 +264,29 @@ def clean_districts(df, clean=True):
     # Encode Region
     if clean:
         df = encode_category(df, 'region')
+
+    return df
+
+def clean_cards(df_card, df_disp, clean=True):
+
+    df = df_disp.merge(df_card, on="disp_id", how="left")
+
+    df = df.groupby(['account_id']).agg({'card_id':['count']}).reset_index()
+    df.columns = ['account_id', 'num_cards']
+
+    # Has card
+    df['has_card'] = df['num_cards'] > 0
+    df.drop(columns=['num_cards'], inplace=True)
+
+    if clean:
+        df = encode_category(df, 'has_card')
+
+    return df
+
+def clean_loans(df):
+    # Format loan date
+    df = format_date(df, 'date')
+    df.rename(columns={'date': 'loan_date'}, inplace=True)
 
     return df
 
@@ -478,22 +494,6 @@ def clean_transactions(df, clean=True, op=False, k_symbol=False):
 
     return new_df
 
-def clean_cards(df_card, df_disp, clean=True):
-
-    df = df_disp.merge(df_card, on="disp_id", how="left")
-
-    df = df.groupby(['account_id']).agg({'card_id':['count']}).reset_index()
-    df.columns = ['account_id', 'num_cards']
-
-    # Has card
-    df['has_card'] = df['num_cards'] > 0
-    df.drop(columns=['num_cards'], inplace=True)
-
-    if clean:
-        df = encode_category(df, 'has_card')
-
-    return df
-
 def clean_columns(df):
     df = df.set_index('loan_id')
 
@@ -506,12 +506,13 @@ def clean_columns(df):
         "no._of_municipalities_with_inhabitants_2000-9999",
         "no._of_municipalities_with_inhabitants_>10000", "no._of_cities"])
 
+
 #######
 # Merge
 #######
 
 def merge_dfs(dfs):
-    [ account, disp, cards, client, district, loan, transaction ] = dfs
+    [ account, disp, client, district, cards, loan, transaction ] = dfs
 
     df = pd.merge(loan, account, on='account_id', how="left")
     df = pd.merge(df, disp,  on='account_id', how="left")
