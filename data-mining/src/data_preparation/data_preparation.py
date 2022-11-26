@@ -269,7 +269,7 @@ def clean_districts(df, clean=True):
     ], inplace=True)
 
     # Encode Region
-    if not clean:
+    if clean:
         df = encode_category(df, 'region')
 
     return df
