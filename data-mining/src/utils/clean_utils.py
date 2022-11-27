@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
+from datetime import datetime
 
 #######
 # Utils
@@ -33,6 +34,11 @@ def split_birth(birth_number):
     birth_date = pd.to_datetime(birth_date, format='%Y%m%d')
 
     return gender, birth_date
+
+def calculate_age(birth_date):
+    today = datetime.now()
+    age = (today - birth_date).days // 365
+    return age
 
 def transform_status(df):
     # Transform Status: 1 => 0 and -1 => 1
@@ -538,6 +544,9 @@ def extract_other_features(df, clean=True):
 
     # Boolean value telling if the account was created on the owner district
     df['same_district'] = df['account_district_id'] == df['client_district_id']
+
+    # Current age
+    df['age'] = df['birth_date'].apply(lambda x: calculate_age(x))
 
     if clean:
         df = encode_category(df, 'same_district')
