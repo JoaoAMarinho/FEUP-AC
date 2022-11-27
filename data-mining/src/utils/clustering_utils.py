@@ -28,7 +28,7 @@ def pca(df, cols, table):
     components = pca.fit_transform(X)
     df_comp = pd.concat([pd.DataFrame(data=components, columns=['Comp1', 'Comp2']), df[['status']]],axis = 1)
     sns.scatterplot(data=df_comp, hue='status', x='Comp1', y='Comp2')
-    plt.title(f"PCA {table} info with status")
+    plt.title(f"{table} info PCA with status")
     plt.show()
     return df_comp[['Comp1', 'Comp2']]
 
