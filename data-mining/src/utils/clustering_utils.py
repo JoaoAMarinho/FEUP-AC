@@ -26,17 +26,18 @@ def pca(df, cols, table):
     # Divide into components
     pca = PCA(n_components=2, random_state=0)
     components = pca.fit_transform(X)
-    df_comp = pd.concat([pd.DataFrame(data=components, columns=["Comp1", "Comp2"]), df[['status']]],axis = 1)
-    sns.scatterplot(data=df_comp, hue="status", x="Comp1", y="Comp2")
-    plt.title(f'PCA {table} info with status')
+    df_comp = pd.concat([pd.DataFrame(data=components, columns=['Comp1', 'Comp2']), df[['status']]],axis = 1)
+    sns.scatterplot(data=df_comp, hue='status', x='Comp1', y='Comp2')
+    plt.title(f"PCA {table} info with status")
     plt.show()
-    return df_comp[["Comp1", "Comp2"]]
+    return df_comp[['Comp1', 'Comp2']]
 
 def elbow_method(components):
     """
     Create 10 K-Mean models while varying the number of clusters (k)
     To get best k
     """
+
     inertias = []
     for k in range(1,10):
         kmeans = KMeans(n_clusters=k, random_state=0)
@@ -45,10 +46,10 @@ def elbow_method(components):
         # Append the inertia to the list of inertias
         inertias.append(kmeans.inertia_)
 
-    sns.lineplot(x=range(1,10), y=inertias, marker="o")
-    plt.title('Evolution of Inertia with number of clusters')
-    plt.xlabel('Number of clusters k')
-    plt.ylabel('Inertia')
+    sns.lineplot(x=range(1,10), y=inertias, marker='o')
+    plt.title("Evolution of Inertia with number of clusters")
+    plt.xlabel("Number of clusters k")
+    plt.ylabel("Inertia")
     plt.show()
 
 
@@ -66,11 +67,11 @@ def merge_transactions_clients(dfs):
     transactions = cu.clean_transactions(trans, op=False, k_symbol=True)
     cards = cu.clean_cards(cards, disp)
 
-    df = pd.merge(clients, disp, on='client_id', how="left")
-    df = pd.merge(df, accounts, on='account_id', how="left", suffixes=('_client', '_account'))
+    df = pd.merge(clients, disp, on='client_id', how='left')
+    df = pd.merge(df, accounts, on='account_id', how='left', suffixes=('_client', '_account'))
     df = pd.merge(df, districts, left_on='client_district_id', right_on='code')
-    df = pd.merge(df, transactions, how="left", on="account_id")
-    df = pd.merge(df, cards, how="left", on="account_id")
+    df = pd.merge(df, transactions, how='left', on='account_id')
+    df = pd.merge(df, cards, how='left', on='account_id')
     df['age'] = df['birth_date'].apply(lambda x: cu.calculate_age(x))
     df.dropna(inplace=True)
 
@@ -88,7 +89,7 @@ def clustering_kmeans(df, components, N, title):
 
     labels = kmeans.predict(components.iloc[:,:2])
 
-    sns.scatterplot(data=components, x="Comp1", y="Comp2", hue=labels, palette=sns.color_palette("tab10", N))
+    sns.scatterplot(data=components, x='Comp1', y='Comp2', hue=labels, palette=sns.color_palette('tab10', N))
     plt.title(title)
     plt.show()
 
@@ -111,47 +112,21 @@ def clustering_kmeans(df, components, N, title):
 ###########
 
 def clustering_clients(df):
-    client_columns = ["gender", "age", "average_salary", "criminality_growth", "avg_balance"]
+    client_columns = ['gender', 'age', 'average_salary', 'criminality_growth', 'avg_balance']
 
-    components = pca(df, client_columns, "Clients")
+    components = pca(df, client_columns, 'Clients')
     elbow_method(components)
     return clustering_kmeans(df[client_columns], components, 3, "Client's clusters")
 
 def clustering_economic(df):
+    economic_columns = ['avg_amount_credit', 'avg_amount_withdrawal', 'average_salary']
+    economic_columns2 = ['min_balance', 'avg_balance', 'avg_amount_withdrawal', 'std_balance', 'avg_amount_total', 'credit_ratio']
 
-    # CLUSTERING 1
-    df1 = df[['avg_amount_credit', 'avg_amount_withdrawal', 'average_salary']]
-    clustering_kmeans(df1)
-
-    # CLUSTERING 2
-    df2 = df[['avg_amount_credit', 'average_salary', 'avg_balance']]
-    clustering_kmeans(df2, 3)
-
-    # CLUSTERING 3
-    df3 = df[['min_balance', 'avg_balance', 'avg_amount_withdrawal', 'std_balance', 'avg_amount_total', 'credit_ratio']]
-    clustering_kmeans(df3, 4, 'k-means++', 2)
-
-    # CLUSTERING 4 - for all clients that have transactions
+    # CLUSTERING - for all clients that have transactions
     # df4 =  merge_transactions_clients(db)
-    # df4 = df4[['avg_amount_credit', 'average_salary', 'avg_amount_withdrawal', 'avg_balance']]
     # df4.dropna(inplace=True)
     # clustering_kmeans(df4, 3)
 
 
-def clustering_demographic(dfs, df=None):
-    if df is None:
-        df = merge_transactions_clients(dfs)
-
-    # CLUSTERING 1
-    df1 = df[['avg_balance', 'average_salary', 'age_at_loan']]
-    clustering_kmeans(df1)
-
-    # CLUSTERING 2
-    # df2 = df[[ 'no._of_municipalities_with_inhabitants_<_499', 'no._of_municipalities_with_inhabitants_2000-9999', 'average_salary']]
-    # df2.dropna(inplace=True)
-    # clustering_kmeans(df2)
-    # clustering_kmedoids(df2, 2)
-
-    # CLUSTERING 3
-    # df3 = df[['no._of_municipalities_with_inhabitants_2000-9999', 'avg_commited_crimes', 'ratio_entrepreneurs']]
-    # clustering_kmeans(df3)
+def clustering_demographic(df):
+    demographic_columns = ['gender', 'age', 'average_salary', 'criminality_growth', 'avg_balance']
