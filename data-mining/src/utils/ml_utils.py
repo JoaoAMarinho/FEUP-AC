@@ -149,8 +149,9 @@ def apply_cv(
     parameter_grid,
     cross_validation=StratifiedKFold(n_splits=5),
     feature_selection=False,
-    filter=False,
-    oversample=False
+    filter=True,
+    oversample=False,
+    scaler=True,
 ):
     parameter_tunning_sample = df.groupby('status', group_keys=False).apply(lambda x: x.sample(frac=0.3))
     training_sample = df.drop(parameter_tunning_sample.index)
@@ -195,8 +196,9 @@ def apply_cv(
     X = parameter_tunning_sample.drop(['status'], axis=1)
     y = parameter_tunning_sample['status']
 
-    scaler = StandardScaler().fit(X)
-    X = pd.DataFrame(scaler.transform(X), index=X.index, columns=X.columns)
+    if scaler:
+        scaler_ = StandardScaler().fit(X)
+        X = pd.DataFrame(scaler_.transform(X), index=X.index, columns=X.columns)
     grid_search.fit(X, y)
 
     # New pipeline
@@ -224,8 +226,10 @@ def apply_cv(
 
     X = training_sample.drop(['status'], axis=1)
     y = training_sample['status']
-    scaler = StandardScaler().fit(X)
-    X = pd.DataFrame(scaler.transform(X), index=X.index, columns=X.columns)
+    
+    if scaler:
+        scaler_ = StandardScaler().fit(X)
+        X = pd.DataFrame(scaler_.transform(X), index=X.index, columns=X.columns)
 
     metrics = ['accuracy', 'roc_auc', 'precision']
     scores = cross_validate(pipe, X, y, cv=5, scoring=metrics)
