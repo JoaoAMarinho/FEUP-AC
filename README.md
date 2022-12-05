@@ -1,4 +1,4 @@
-# feup-ac
+# Aprendizagem Computacional
 
 ## Instructions
 
