@@ -1,67 +1,13 @@
-# Aprendizagem Computacional
+# FEUP-AC 2022/2023
+Loan granting data-mining problem project for the AC curricular unit.
 
-## Table of contents
-- **[Structure](#structure)**
-- **[Setup](#setup)**
-- **[Usage](#usage)**
-- **[Authors](#authors)**
+### Project Infos
+* **Date:** 4th Year, 1st Semester, 2022/2023
+* **Course:** Aprendizagem Computacional (AC) | Machine Learning
+* **Course Link:** [Course Link](https://sigarra.up.pt/feup/en/UCURR_GERAL.FICHA_UC_VIEW?pv_ocorrencia_id=501931)
 
-## Structure
+### Disclaimer
+This repository, and every other FEUP-COURSE* repos on GitHub correspond to school projects from the respective COURSE. The code on this repo is intended for educational purposes. I do not take any responsibility, liability or whateverity over any code faults, inconsistency or anything else. If you intend on copying most or parts of the code for your school projects, keep in mind that this repo is public, and that your professor might search the web for similar project solutions or whatnot and choose to fail you for copying.
 
-The project is structured in 4 main folders: `data`, `docs`, `results` and `src`.
-
-The Data folder keeps all *.csv* files, the train and competition, as well as the cleaned ones.
-
-The Docs folder contains all the project documentation.
-
-The Results folder stores the achieved *.csv* files and respective model configuration after predicting the probabilities over the competition *.csv* files.
-
-The Src folder includes all the notebooks and remaining *.py* files.
-
-## Setup
-
-#### 1. Install dependencies
-
-```sh
-$ pip install -r /src/requirements.txt.
-```
-
-## Usage
-#### 1. Exploratory analysis:
-```
-run exploratory_analysis notebook
-```
-
-#### 2. Descriptive analysis:
-```
-run descriptive_analysis notebook
-```
-
-#### 3. Data preparation:
-```
-run data_preparation notebook
-```
-
-#### 4. Model validation:
-
-Warning: The `machine_learning` notebook compares all model results (AUC score) with all prepared dataframes, it may take a while to run the whole script so it is not recommended running.
-
-```
-run machine_learning notebook
-```
-
-#### 5. Model submission:
-
-The `model_submission` notebook is used for submitting the wanted model with the best parameters.
-
-```
-run model_submission notebook
-```
-
-## Authors
-
-| Name             | Number    | Work percentage             |
-| ---------------- | :---------: | :------------------: |
-| Beatriz Aguiar   | 201906230 | 33.33% |
-| João Marinho     | 201905952 | 33.33% |
-| Margarida Vieira | 201907907 | 33.33% |
+### Credits
+Credits to [Beatriz Aguiar](https://github.com/beatriz-ag) && [Margarida Vieira](https://github.com/margaridav27) for helping with the development of the AC Project.
